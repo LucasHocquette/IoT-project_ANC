@@ -3,7 +3,7 @@
 
 #define BUFFER_SIZE 64
 
-AnalogIn mic(A0);
+//AnalogIn mic(A0);
 uint16_t ADC_DMABuffer[BUFFER_SIZE];
 
 ADC_HandleTypeDef hadc1;
@@ -15,19 +15,27 @@ static bool MX_ADC1_Init();
 static bool MX_DMA_Init();
 static bool MX_TIM3_Init();
 
-/*
+
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {      
     printf("ADC half int!");
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {      
     printf("ADC full int!");
-}*/
+}
+
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef* hadc) {      
+    printf("ADC error!");
+}
 
 // main() runs in its own thread in the OS
 int main()
 {    
     printf("Starting ...\r\n");
+
+    if (!MX_GPIO_Init()) {
+        return 1;
+    }
 
     if (!MX_DMA_Init()) {
         return 1;
@@ -41,7 +49,6 @@ int main()
         return 1;
     }  
     
-    //HAL_ADC_Start(&hadc1);
     HAL_ADC_Start_DMA(&hadc1, (uint32_t *)ADC_DMABuffer, ((uint32_t)(BUFFER_SIZE)));
     if (HAL_TIM_Base_Start(&htim3) != HAL_OK)
     {        
@@ -62,7 +69,7 @@ static bool MX_GPIO_Init() {
 
     GPIO_InitTypeDef GPIO_InitStruct = {0};
     GPIO_InitStruct.Pin = A0;
-    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
@@ -81,6 +88,11 @@ static bool MX_DMA_Init()
 
 static bool MX_ADC1_Init()
 {      
+    __HAL_RCC_ADC_CLK_ENABLE();
+    #if defined(RCC_CCIPR_ADCSEL)
+    __HAL_RCC_ADC_CONFIG(RCC_ADCCLKSOURCE_SYSCLK);
+    #endif
+
     ADC_MultiModeTypeDef multimode = {0};
     ADC_ChannelConfTypeDef  sConfig = { 0 };
 
@@ -96,9 +108,10 @@ static bool MX_ADC1_Init()
     hadc1.Init.ContinuousConvMode = DISABLE;
     hadc1.Init.NbrOfConversion = 1;
     hadc1.Init.DiscontinuousConvMode = DISABLE;
+    hadc1.Init.NbrOfDiscConversion = 1;
     hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T3_TRGO;
     hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-    hadc1.Init.DMAContinuousRequests = ENABLE;
+    hadc1.Init.DMAContinuousRequests = DISABLE;
     hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
     hadc1.Init.OversamplingMode = DISABLE;
     if (HAL_ADC_Init(&hadc1) != HAL_OK) {
@@ -118,12 +131,12 @@ static bool MX_ADC1_Init()
     /** Configure Regular Channel
     */  
     
-    sConfig.Channel = ADC_CHANNEL_1;
     sConfig.Rank = ADC_REGULAR_RANK_1;
     sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
     sConfig.SingleDiff = ADC_SINGLE_ENDED;
     sConfig.OffsetNumber = ADC_OFFSET_NONE;
     sConfig.Offset = 0;
+    sConfig.Channel = ADC_CHANNEL_14;
     if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK) {
         printf("ERR: ADC multimode error\r\n");
         return false;

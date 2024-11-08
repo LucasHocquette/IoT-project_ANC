@@ -21,6 +21,7 @@ writeAPIKey = 'JD7ZM7X1W6B6GFYO';
 
 % Packet size :
 N = 5;
+no_source = False; % to be able to manage an external source not on the cloud
 
 %% Read Data %%
 [data, time] = thingSpeakRead(readChannelID,OutputFormat='table');
@@ -38,15 +39,24 @@ source = data.Source1(end-N:end);
 %% Analyze Data %%
 analyzedData = data;
 fxlms = dsp.FilteredXLMSFilter(length(data.IR1));
+fxlms.SecondaryPathCoefficients = [1, 0];
+fxlms.SecondaryPathEstimate = [1, 0];
 
 if data.Command(end)==0
-    fxlms.InitialCoefficients=data.IR1;
+    fxlms.InitialCoefficients=ifft(data.IR1);
     [y,err]=fxlms(m1,zeros(size(m1)));
-    data.IR1 = fxlms.Coefficients;
+    data.IR1 = fft(fxlms.Coefficients);
+    disp(fft(fxlms.Coefficients))
 else
-    h=xcorr(m1,source,length(source),'biased');
-    data.IR1 = h/var(source);
-    data.IR1 = data.IR1(length(data.IR1)//2:end);
+    if ~no_source
+        h=xcorr(m1,source,length(source),'biased');
+        ir = h/var(source);
+        data.IR1 = fft(ir);
+        disp(fft(ir)
+    else
+        data.IR1 = fft(m1);
+        disp(fft(m1))
+    end
 end
 
 %% Write Data %%

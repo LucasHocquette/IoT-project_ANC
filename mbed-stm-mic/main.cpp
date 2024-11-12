@@ -62,7 +62,7 @@ int main()
     synchro_init.write(1);
     us_timestamp_t time_length = adc_burst();
     printf("Burst completed: %llu us, %d!\r\n", time_length, sample_size);
-    if (cloud_send(sample_buffer, 100) <= 0){
+    if (cloud_send(sample_buffer, 50) <= 0){
         printf("Cloud init err!\r\n");
         return 1;
     }
@@ -77,7 +77,7 @@ int main()
         us_timestamp_t time_length = adc_burst();
         printf("Burst completed: %llu us, %d!\r\n", time_length, sample_size);
         
-        if (cloud_send(sample_buffer, 100) <= 0){
+        if (cloud_send(sample_buffer, 50) <= 0){
             printf("Cloud init err!\r\n");
             return 1;
         }

@@ -42,7 +42,7 @@ us_timestamp_t adc_burst(void) {
 */
 int main()
 {
-    printf("Board start up!\r\n");
+    printf("\r\nBoard start up!\r\n");
     init_led.write(0);
     record_led.write(0);
 

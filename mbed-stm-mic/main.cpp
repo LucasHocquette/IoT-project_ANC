@@ -1,4 +1,3 @@
-#include "PinNameAliases.h"
 #include "mbed.h"
 
 /*
@@ -69,4 +68,3 @@ int main()
         // SEND BURST
     }
 }
-

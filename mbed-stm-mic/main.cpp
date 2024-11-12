@@ -1,4 +1,6 @@
+#include "ThisThread.h"
 #include "mbed.h"
+#include "cloud.h"
 
 /*
     CONSTANTS
@@ -20,8 +22,8 @@ DigitalOut record_led(LED2);
 /*
     PROGRAM
 */
-uint32_t sample_buffer[BUFFER_SIZE];
-uint32_t sample_size = 0;
+uint16_t sample_buffer[BUFFER_SIZE];
+uint16_t sample_size = 0;
 us_timestamp_t adc_burst(void) {
     sample_size = 0;
     burst_timer.reset();
@@ -49,12 +51,21 @@ int main()
     record_led.write(0);
     synchro_init.write(0);
 
+    if (!cloud_init()){
+        printf("Cloud init err!\r\n");
+        return 1;
+    }
+
     while (start_button.read() == 1);
     printf("Start Init!\r\n");
     init_led.write(1);
     synchro_init.write(1);
     us_timestamp_t time_length = adc_burst();
     printf("Burst completed: %llu us, %d!\r\n", time_length, sample_size);
+    if (cloud_send(sample_buffer, 100) <= 0){
+        printf("Cloud init err!\r\n");
+        return 1;
+    }
     synchro_init.write(0);
     init_led.write(0);
 
@@ -65,6 +76,12 @@ int main()
     while (true) {
         us_timestamp_t time_length = adc_burst();
         printf("Burst completed: %llu us, %d!\r\n", time_length, sample_size);
-        // SEND BURST
+        
+        if (cloud_send(sample_buffer, 100) <= 0){
+            printf("Cloud init err!\r\n");
+            return 1;
+        }
+
+        ThisThread::sleep_for(15000);
     }
 }

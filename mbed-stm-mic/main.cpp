@@ -3,8 +3,7 @@
 
 #define BUFFER_SIZE 64
 
-//AnalogIn mic(A0);
-uint16_t ADC_DMABuffer[BUFFER_SIZE];
+uint32_t ADC_DMABuffer[BUFFER_SIZE];
 
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
@@ -15,17 +14,16 @@ static bool MX_ADC1_Init();
 static bool MX_DMA_Init();
 static bool MX_TIM3_Init();
 
-
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc) {      
-    printf("ADC half int!");
+	UNUSED(hadc);  // we only use  ADC1
 }
 
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {      
-    printf("ADC full int!");
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {       
+	UNUSED(hadc);  // we only use  ADC1
 }
 
-void HAL_ADC_ErrorCallback(ADC_HandleTypeDef* hadc) {      
-    printf("ADC error!");
+void HAL_ADC_ErrorCallback(ADC_HandleTypeDef* hadc) {       
+	UNUSED(hadc);  // we only use  ADC1
 }
 
 // main() runs in its own thread in the OS
@@ -49,13 +47,14 @@ int main()
         return 1;
     }  
     
-    HAL_ADC_Start_DMA(&hadc1, (uint32_t *)ADC_DMABuffer, ((uint32_t)(BUFFER_SIZE)));
+    HAL_ADC_Start_DMA(&hadc1, ADC_DMABuffer, ((uint32_t)(BUFFER_SIZE)));
+    printf("Start DMA!\r\n");
+    
     if (HAL_TIM_Base_Start(&htim3) != HAL_OK)
     {        
         printf("ERR: ADC multimode config error\r\n");
         return 1;
-    }
-
+    }    
 
     printf("Main loop!\r\n");
     while (true) {
@@ -99,7 +98,7 @@ static bool MX_ADC1_Init()
     /** Common config
     */
     hadc1.Instance = ADC1;
-    hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+    hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
     hadc1.Init.Resolution = ADC_RESOLUTION_12B;
     hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
     hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
@@ -107,11 +106,11 @@ static bool MX_ADC1_Init()
     hadc1.Init.LowPowerAutoWait = DISABLE;
     hadc1.Init.ContinuousConvMode = DISABLE;
     hadc1.Init.NbrOfConversion = 1;
-    hadc1.Init.DiscontinuousConvMode = DISABLE;
+    hadc1.Init.DiscontinuousConvMode = DISABLE; 
     hadc1.Init.NbrOfDiscConversion = 1;
-    hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T3_TRGO;
-    hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
-    hadc1.Init.DMAContinuousRequests = DISABLE;
+    hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START; //ADC_EXTERNALTRIG_T3_TRGO;
+    hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE; //ADC_EXTERNALTRIGCONVEDGE_RISING;
+    hadc1.Init.DMAContinuousRequests = ENABLE;
     hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
     hadc1.Init.OversamplingMode = DISABLE;
     if (HAL_ADC_Init(&hadc1) != HAL_OK) {

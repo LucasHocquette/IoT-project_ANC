@@ -6,12 +6,13 @@
     CONSTANTS
 */
 #define BUFFER_SIZE 15000
-#define BURST_TIME_MS 500
+#define BURST_TIME_MS 2000
 
 /*
     DECLARATION
 */
 Timer burst_timer;
+Timer sample_timer;
 AnalogIn mic_adc(A0);
 DigitalIn start_button(PC_13);
 DigitalOut synchro_init(D0);
@@ -29,6 +30,8 @@ us_timestamp_t adc_burst(void) {
     burst_timer.reset();
     burst_timer.start();
     while (burst_timer.read_ms() < BURST_TIME_MS) {
+        sample_timer.reset();
+        sample_timer.start();
         if (sample_size >= BUFFER_SIZE) {
             printf("Buffer OVERFLOW !!\r\n");
             break;
@@ -36,6 +39,8 @@ us_timestamp_t adc_burst(void) {
 
         sample_buffer[sample_size] = mic_adc.read_u16();
         sample_size++;
+        while (sample_timer.read_us() <= 300);
+        sample_timer.stop();
     }
     burst_timer.stop();
     return burst_timer.read_high_resolution_us();

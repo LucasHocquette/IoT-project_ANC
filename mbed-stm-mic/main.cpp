@@ -1,39 +1,64 @@
 #include "mbed.h"
-#include "include/mic_sampling.h"
 
-#define BUFFER_SIZE 1024
+/*
+    CONSTANTS
+*/
+#define BUFFER_SIZE 20000
+#define BURST_TIME_MS 500
 
-Thread t;
+/*
+    DECLARATION
+*/
+Timer burst_timer;
 AnalogIn mic_adc(A0);
+DigitalIn start_button(PC_13);
+DigitalOut init_led(LED1);
+DigitalOut record_led(LED2);
 
-uint32_t sample_buffer[BUFFER_SIZE*2];
-uint32_t freq_counter = 0;
-void adc_sample(void) {
-    uint32_t buffer_counter = 0;
-
-    printf("ADC loop!\r\n");
-    while (true) {
-        if (buffer_counter >= BUFFER_SIZE*2) {
-            buffer_counter = 0;
+/*
+    PROGRAM
+*/
+uint32_t sample_buffer[BUFFER_SIZE];
+uint32_t sample_size = 0;
+us_timestamp_t adc_burst(void) {
+    sample_size = 0;
+    burst_timer.reset();
+    burst_timer.start();
+    while (burst_timer.read_ms() < BURST_TIME_MS) {
+        if (sample_size >= BUFFER_SIZE) {
+            printf("Buffer OVERFLOW !!\r\n");
+            break;
         }
 
-        sample_buffer[buffer_counter] = mic_adc.read_u16();
-        buffer_counter++;
-        freq_counter++;
+        sample_buffer[sample_size] = mic_adc.read_u16();
+        sample_size++;
     }
+    burst_timer.stop();
+    return burst_timer.read_high_resolution_us();
 }
 
-// main() runs in its own thread in the OS
+/*
+    MAIN
+*/
 int main()
-{    
-    t.start(callback(adc_sample));
-    printf("Init!\r\n");
-    
-    uint32_t last_counter = 0;
+{
+    printf("Board start up!\r\n");
+    init_led.write(0);
+    record_led.write(0);
+
+    while (start_button.read() == 1);
+
+    printf("Start Init!\r\n");
+    init_led.write(1);
+    adc_burst();
+
+    printf("Start Loop!\r\n");
+    init_led.write(0);
+    record_led.write(1);
     while (true) {
-        printf("counter: %d\r\n", freq_counter-last_counter);
-        last_counter = freq_counter;
-        ThisThread::sleep_for(1s);
+        us_timestamp_t time_length = adc_burst();
+        printf("Burst completed: %llu us, %d!\r\n", time_length, sample_size);
+        // SEND BURST
     }
 }
 

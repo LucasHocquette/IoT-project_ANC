@@ -4,13 +4,20 @@
  */
 
 #include "mbed.h"
-#include "main.h"
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
 
-const double pi = 3.14159265358979323846;
+/*
+    CONSTANTS
+*/
+#define BLINKING_RATE     100ms
+#define OSC_Frequency     800 // Hz
+#define SAMPLING_Frequency 5000 // Hz
 
+/*
+    DEFINITIONS
+*/
 float Signal_Generator(float t, char sig);
 static void run_Loop(int ind, float* start);
 static void setup_DAC(void);
@@ -18,13 +25,12 @@ static void on_init_rise();
 static void on_rec_rise();
 static void on_release();
 
-// DAC Setup :
-#define BLINKING_RATE     100ms
-#define OSC_Frequency     800 // Hz
-#define SAMPLING_Frequency 5000 // Hz
-
+/*
+    DECLARATION
+*/
 AnalogOut out(PA_5);
-InterruptIn command(PC_13);
+InterruptIn synchro_init(D0);
+InterruptIn synchro_rec(D1);
 Ticker tic;
 EventQueue queue(32*4);
 Thread eventThread(osPriorityAboveNormal,65536);
@@ -39,10 +45,13 @@ bool DAC_status = false;
 
 bool flag_init = false;
 bool flag_rec = false;
-// End of DAC Setup
 
+/*
+    PROGRAM
+*/
 int main()
 {
+    printf("\r\nBoard start up!\r\n");
     bool prev_flag_init = flag_init;
     bool prev_flag_rec = flag_rec;
     // Fill in a LUT with the signal to loop on
@@ -51,8 +60,6 @@ int main()
         values[i] = Signal_Generator(float(i)/SAMPLING_Frequency, ' ');
     }
 
-    printf("Starting blinking program !\n");
-
     // Start the EventQueue
     eventThread.start(callback(&queue, &EventQueue::dispatch_forever));
 
@@ -60,24 +67,24 @@ int main()
     auto attRunLoop = mbed::callback([&](){ind=(ind+1)%loop_len; run_Loop(ind,start);});
     auto tickerCallback = [&](){queue.call(attRunLoop);}; // use a queue to avoid Mutex errors
 
-    tic.attach_us(tickerCallback,SAMPLING_Period);
+    synchro_init.rise(on_init_rise);
+    synchro_init.fall(on_release);
+    synchro_rec.rise(on_rec_rise);
+    synchro_rec.fall(on_release);
 
-    command.fall(on_init_rise);
-    command.rise(on_release);
-
+    printf("Main loop!\r\n");
     while(true){
-        button = command.read(); // Fetch the command signal
         if(flag_init != prev_flag_init){
-            printf("Detaching init routine ...\n");
             prev_flag_init = flag_init;
+            printf("Detaching init routine ...\n");
             tic.detach();
             if(flag_init){
                 printf("Attaching init routine ...\n");
                 tic.attach_us(tickerCallback,SAMPLING_Period);
             }
         } else if (flag_rec != prev_flag_rec) {
-            printf("Detaching rec routine ...\n");
             prev_flag_rec = flag_rec;
+            printf("Detaching rec routine ...\n");
             tic.detach();
             if(flag_rec){
                 printf("Attaching rec routine ...\n");
@@ -85,16 +92,15 @@ int main()
             }
         }
     }
-
-    printf("Callback set\n");
 }
 
 float Signal_Generator(float t, char sig){
-    //return 0.2f*sin(OSC_Frequency*2*pi*t)+0.22f; // Generate a test sinusoid
     return (float)rand()/RAND_MAX; // generate a random white noise
-    //return 0.2f*(t*OSC_Frequency - floor(t*OSC_Frequency))+0.22f; // generate a sawtooth signal
 }
 
+/*
+    INTERRUPT
+*/
 static void run_Loop(int ind, float* start){
     out = *(start+ind);
 }

@@ -32,9 +32,18 @@ no_source = False; % to be able to manage an external source not on the cloud
 % %data = table(x0,x0,[1],[1,0,0,0,0,0,0,0,0,0],VariableNames={'Source1','Mic1','Command','IR1'});
 % data = table([1,2,3,4,5,6,7,8,9,0],[0,1,0,1,0,1,0,1,0,1],[0],H,VariableNames={'Source1','Mic1','Command','IR1'});
 
-m1 = data.Mic1(end-N:end);
-source = data.Source1(end-N:end);
+m1 = data.Mic1(end);
+source = data.Source1(end);
 
+% Convert each cell to a numeric array
+m1Array = cellfun(@(x) str2num(x), m1, 'UniformOutput', false);
+% Convert to a matrix (optional, depending on your needs)
+m1 = cell2mat(m1Array);
+
+% Convert each cell to a numeric array
+sourceArray = cellfun(@(x) str2num(x), source, 'UniformOutput', false);
+% Convert to a matrix (optional, depending on your needs)
+source = cell2mat(sourceArray);
 
 %% Analyze Data %%
 analyzedData = data;
